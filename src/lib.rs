@@ -7,13 +7,71 @@
 
 use std::{
     collections::BTreeMap,
+    fmt,
     io::Read,
+    ops::RangeInclusive,
     path::{Path, PathBuf},
 };
 
 use serde::{Deserialize, de::DeserializeOwned};
 
-pub use serde_yaml_ng::{Error, Value};
+pub use serde_yaml_ng::Value;
+
+const SUPPORTED_VERSIONS: RangeInclusive<u32> = 1..=9;
+
+/// Failures from the YAML parsing entry points.
+#[derive(Debug)]
+pub enum Error {
+    /// The document declares a version this parser cannot interpret.
+    UnsupportedVersion { version: u32 },
+    /// Invalid YAML or metadata fields.
+    Yaml(serde_yaml_ng::Error),
+    /// Reading the input failed.
+    Io(std::io::Error),
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::UnsupportedVersion { version } => write!(
+                formatter,
+                "unsupported rosbag2 metadata version {version}; expected {SUPPORTED_VERSIONS:?}"
+            ),
+            Self::Yaml(error) => error.fmt(formatter),
+            Self::Io(error) => error.fmt(formatter),
+        }
+    }
+}
+
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::UnsupportedVersion { .. } => None,
+            Self::Yaml(error) => Some(error),
+            Self::Io(error) => Some(error),
+        }
+    }
+}
+
+impl From<serde_yaml_ng::Error> for Error {
+    fn from(error: serde_yaml_ng::Error) -> Self {
+        Self::Yaml(error)
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(error: std::io::Error) -> Self {
+        Self::Io(error)
+    }
+}
+
+fn check_version(version: u32) -> Result<(), Error> {
+    if SUPPORTED_VERSIONS.contains(&version) {
+        Ok(())
+    } else {
+        Err(Error::UnsupportedVersion { version })
+    }
+}
 
 /// Parse a complete `metadata.yaml`, including its root wrapper.
 pub fn from_str(yaml: &str) -> Result<BagMetadata, Error> {
@@ -23,9 +81,7 @@ pub fn from_str(yaml: &str) -> Result<BagMetadata, Error> {
 /// Read a complete `metadata.yaml` from a file or other byte stream.
 pub fn from_reader(mut reader: impl Read) -> Result<BagMetadata, Error> {
     let mut yaml = Vec::new();
-    reader
-        .read_to_end(&mut yaml)
-        .map_err(<Error as serde::de::Error>::custom)?;
+    reader.read_to_end(&mut yaml)?;
     from_slice(&yaml)
 }
 
@@ -47,17 +103,20 @@ struct CustomDataInformation {
 fn from_slice(yaml: &[u8]) -> Result<BagMetadata, Error> {
     let document: MetadataDocument = serde_yaml_ng::from_slice(yaml)?;
     let mut information = document.rosbag2_bagfile_information;
-    if information["version"]
-        .as_u64()
-        .is_some_and(|version| (6..=9).contains(&version))
-        && information.get("custom_data").is_some()
-    {
+    let version = information
+        .get("version")
+        .map(|value| serde_yaml_ng::from_value::<u32>(value.clone()))
+        .transpose()?;
+    if let Some(version) = version {
+        check_version(version)?;
+    }
+    if version.is_some_and(|version| version >= 6) && information.get("custom_data").is_some() {
         // Read scalars directly as strings; Value would lose spellings such as TRUE and 0x10.
         let custom: CustomDataDocument = serde_yaml_ng::from_slice(yaml)?;
         information["custom_data"] =
             serde_yaml_ng::to_value(custom.rosbag2_bagfile_information.custom_data)?;
     }
-    serde_yaml_ng::from_value(information)
+    Ok(serde_yaml_ng::from_value(information)?)
 }
 
 /// Metadata shared by SQLite3 and MCAP bags; paths are kept as written.
@@ -113,11 +172,7 @@ impl TryFrom<BTreeMap<String, Value>> for BagMetadata {
 
     fn try_from(mut fields: BTreeMap<String, Value>) -> Result<Self, Self::Error> {
         let version: u32 = field(&mut fields, "version")?;
-        if !(1..=9).contains(&version) {
-            return Err(format!(
-                "unsupported rosbag2 metadata version {version}; expected 1..=9"
-            ));
-        }
+        check_version(version).map_err(|error| error.to_string())?;
         let topics: Vec<BTreeMap<String, Value>> = field(&mut fields, "topics_with_message_count")?;
         let topics_with_message_count = topics
             .into_iter()

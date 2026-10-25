@@ -1,4 +1,4 @@
-use rosbag2meta_rs::{BagMetadata, OfferedQosProfiles, Value, from_reader, from_str};
+use rosbag2meta_rs::{BagMetadata, Error, OfferedQosProfiles, Value, from_reader, from_str};
 
 const CURRENT: &str = include_str!("fixtures/upstream/metadata-v9.yaml");
 const EARLY: &str = r#"
@@ -252,6 +252,40 @@ fn rejects_invalid_documents() {
 }
 
 #[test]
+fn reports_unsupported_versions_before_interpreting_their_fields() {
+    for version in [0, 10, 11, u32::MAX] {
+        // Future versions may change every field except the version header.
+        let yaml = format!(
+            "rosbag2_bagfile_information:\n  version: {version}\n  custom_data: [unknown, layout]\n"
+        );
+        for result in [from_str(&yaml), from_reader(yaml.as_bytes())] {
+            let error = result.unwrap_err();
+            assert!(
+                matches!(error, Error::UnsupportedVersion { version: actual } if actual == version)
+            );
+            assert!(error.to_string().contains(&version.to_string()));
+        }
+    }
+}
+
+#[test]
+fn malformed_versions_and_documents_are_yaml_errors() {
+    use std::error::Error as _;
+    for yaml in [
+        "[unclosed".to_owned(),
+        "rosbag2_bagfile_information: {}".to_owned(),
+        "rosbag2_bagfile_information: {version: 9}".to_owned(),
+        EARLY.replace("version: 1", "version: invalid"),
+        EARLY.replace("version: 1", "version: -1"),
+        EARLY.replace("version: 1", "version: 4294967296"),
+    ] {
+        let error = from_str(&yaml).unwrap_err();
+        assert!(matches!(error, Error::Yaml(_)), "{yaml}: {error}");
+        assert!(error.source().is_some());
+    }
+}
+
+#[test]
 fn ignores_unknown_fields() {
     let yaml = EARLY.replace("version: 1", "version: 1\n  extra_field: true");
     assert_eq!(from_str(&yaml).unwrap(), from_str(EARLY).unwrap());
@@ -265,12 +299,9 @@ fn propagates_reader_errors() {
             Err(std::io::Error::other("broken reader"))
         }
     }
-    assert!(
-        from_reader(Broken)
-            .unwrap_err()
-            .to_string()
-            .contains("broken reader")
-    );
+    let error = from_reader(Broken).unwrap_err();
+    assert!(matches!(&error, Error::Io(source) if source.kind() == std::io::ErrorKind::Other));
+    assert!(error.to_string().contains("broken reader"));
 }
 
 #[test]

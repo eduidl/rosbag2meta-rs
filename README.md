@@ -37,6 +37,33 @@ metadata retains the original string.
 ## Compatibility and validation
 
 Metadata versions 1–9 are accepted; other versions return an error.
+`from_str` and `from_reader` return `Error::UnsupportedVersion { version }` for
+an unsupported version before interpreting its version-specific fields.
+Malformed YAML or metadata returns `Error::Yaml`, and reader failures return
+`Error::Io`. Both wrapped errors are available through `std::error::Error::source`.
+
+Applications can retain the original metadata, mark it as unsupported, and retry
+after upgrading the parser instead of stopping an entire import:
+
+```rust
+use rosbag2meta_rs::{Error, from_str};
+
+let yaml = "rosbag2_bagfile_information: {version: 10}";
+match from_str(yaml) {
+    Ok(metadata) => println!("{} messages", metadata.message_count),
+    Err(Error::UnsupportedVersion { version }) => {
+        // Retain the original input for later reprocessing in the application.
+        println!("Metadata version {version} is not supported yet");
+    }
+    Err(error) => eprintln!("Invalid or unreadable metadata: {error}"),
+}
+```
+
+Version detection still requires syntactically valid YAML and a `u32` version.
+The crate does not store inputs or schedule retries. This typed error contract
+applies to the parsing entry points; direct Serde deserialization reports a
+Serde error instead.
+
 Core fields and fields introduced by the declared version are required.
 Empty strings, sequences, and maps are allowed. `custom_data: null` is treated
 as an empty map. Fields introduced after the declared version are ignored,
