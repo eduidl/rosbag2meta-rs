@@ -17,19 +17,47 @@ pub use serde_yaml_ng::{Error, Value};
 
 /// Parse a complete `metadata.yaml`, including its root wrapper.
 pub fn from_str(yaml: &str) -> Result<BagMetadata, Error> {
-    let document: MetadataDocument = serde_yaml_ng::from_str(yaml)?;
-    Ok(document.rosbag2_bagfile_information)
+    from_slice(yaml.as_bytes())
 }
 
 /// Read a complete `metadata.yaml` from a file or other byte stream.
-pub fn from_reader(reader: impl Read) -> Result<BagMetadata, Error> {
-    let document: MetadataDocument = serde_yaml_ng::from_reader(reader)?;
-    Ok(document.rosbag2_bagfile_information)
+pub fn from_reader(mut reader: impl Read) -> Result<BagMetadata, Error> {
+    let mut yaml = Vec::new();
+    reader
+        .read_to_end(&mut yaml)
+        .map_err(<Error as serde::de::Error>::custom)?;
+    from_slice(&yaml)
 }
 
 #[derive(Deserialize)]
 struct MetadataDocument {
-    rosbag2_bagfile_information: BagMetadata,
+    rosbag2_bagfile_information: Value,
+}
+
+#[derive(Deserialize)]
+struct CustomDataDocument {
+    rosbag2_bagfile_information: CustomDataInformation,
+}
+
+#[derive(Deserialize)]
+struct CustomDataInformation {
+    custom_data: Option<BTreeMap<String, String>>,
+}
+
+fn from_slice(yaml: &[u8]) -> Result<BagMetadata, Error> {
+    let document: MetadataDocument = serde_yaml_ng::from_slice(yaml)?;
+    let mut information = document.rosbag2_bagfile_information;
+    if information["version"]
+        .as_u64()
+        .is_some_and(|version| (6..=9).contains(&version))
+        && information.get("custom_data").is_some()
+    {
+        // Read scalars directly as strings; Value would lose spellings such as TRUE and 0x10.
+        let custom: CustomDataDocument = serde_yaml_ng::from_slice(yaml)?;
+        information["custom_data"] =
+            serde_yaml_ng::to_value(custom.rosbag2_bagfile_information.custom_data)?;
+    }
+    serde_yaml_ng::from_value(information)
 }
 
 /// Metadata shared by SQLite3 and MCAP bags; paths are kept as written.

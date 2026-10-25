@@ -174,6 +174,63 @@ fn parses_custom_data() {
 }
 
 #[test]
+fn preserves_custom_data_scalar_strings() {
+    for version in 6..=9 {
+        for (entry, key, value) in [
+            ("run: 123", "run", "123"),
+            ("run: true", "run", "true"),
+            ("123: label", "123", "label"),
+            ("true: label", "true", "label"),
+            ("run: 00123", "run", "00123"),
+            ("run: TRUE", "run", "TRUE"),
+            ("TRUE: 0x10", "TRUE", "0x10"),
+            ("run: 1.00", "run", "1.00"),
+        ] {
+            let yaml = metadata_yaml(version)
+                .replace("custom_data: {}", &format!("custom_data: {{{entry}}}"));
+            let metadata =
+                from_str(&yaml).unwrap_or_else(|error| panic!("v{version}, {entry}: {error}"));
+            assert_eq!(metadata.custom_data[key], value);
+            assert_eq!(from_reader(yaml.as_bytes()).unwrap(), metadata);
+        }
+    }
+}
+
+#[test]
+fn custom_data_before_version_preserves_scalar_spelling() {
+    let yaml = metadata_yaml(6)
+        .replace("  version: 6\n", "")
+        .replace("custom_data: {}", "custom_data: {TRUE: 0x10}")
+        + "  version: 6\n";
+    assert_eq!(from_str(&yaml).unwrap().custom_data["TRUE"], "0x10");
+}
+
+#[test]
+fn custom_data_containers_are_rejected_only_in_versions_that_use_them() {
+    for version in 1..=9 {
+        for value in [
+            "true",
+            "[123]",
+            "{run: [123]}",
+            "{run: {nested: value}}",
+            "{[a, b]: value}",
+        ] {
+            let yaml = if version < 6 {
+                metadata_yaml(version) + &format!("  custom_data: {value}\n")
+            } else {
+                metadata_yaml(version).replace("custom_data: {}", &format!("custom_data: {value}"))
+            };
+            let result = from_str(&yaml);
+            if version < 6 {
+                assert!(result.unwrap().custom_data.is_empty());
+            } else {
+                assert!(result.is_err(), "v{version}: {value}");
+            }
+        }
+    }
+}
+
+#[test]
 fn rejects_invalid_documents() {
     for yaml in [
         "[unclosed".to_owned(),

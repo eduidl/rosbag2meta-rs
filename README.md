@@ -43,6 +43,14 @@ as an empty map. Fields introduced after the declared version are ignored,
 matching the official reader: returned strings, sequences, and maps default
 to empty values, and QoS defaults to `None`. Unknown keys are also ignored.
 
+`from_str` and `from_reader` preserve numeric and boolean-looking `custom_data`
+keys and values as strings, including original spellings such as `TRUE` and
+`0x10`. For v6–v9 documents containing `custom_data`, they make an additional
+typed parsing pass over the input to avoid losing scalar spellings through
+`Value`. Use these entry points for scalar-string compatibility: deserializing
+`BagMetadata` directly still goes through `Value`, which cannot recover the
+original spellings after type inference.
+
 Version changes are cumulative:
 
 - v1: Initial format.
