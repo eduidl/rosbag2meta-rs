@@ -96,6 +96,10 @@ also synthetic.
 
 ## Development
 
+The minimum supported Rust version (MSRV) is 1.85, matching the Rust 2024 edition
+and the requirements of the locked dependencies. CI runs tests on both Rust 1.85
+and stable, with formatting and Clippy checks on stable.
+
 ```sh
 cargo fmt --check
 cargo check --locked
