@@ -1,0 +1,66 @@
+# Source: https://github.com/ros2/rosbag2/blob/910c07f37e483e16f94e593e0a1609919f718286/rosbag2_transport/test/resources/mcap/rewriter_b/metadata.yaml
+# License: Apache-2.0 (see LICENSE)
+# Formatting: legacy QoS strings use block scalars; parsed values are unchanged.
+rosbag2_bagfile_information:
+  version: 6
+  storage_identifier: mcap
+  duration:
+    nanoseconds: 222000000
+  starting_time:
+    nanoseconds_since_epoch: 0
+  message_count: 75
+  topics_with_message_count:
+    - topic_metadata:
+        name: a_empty
+        type: test_msgs/msg/Empty
+        serialization_format: cdr
+        offered_qos_profiles: |-
+          - history: 1
+            depth: 1
+            reliability: 1
+            durability: 1
+            deadline:
+              sec: 9223372036
+              nsec: 854775807
+            lifespan:
+              sec: 9223372036
+              nsec: 854775807
+            liveliness: 1
+            liveliness_lease_duration:
+              sec: 9223372036
+              nsec: 854775807
+            avoid_ros_namespace_conventions: false
+      message_count: 25
+    - topic_metadata:
+        name: c_strings
+        type: test_msgs/msg/Strings
+        serialization_format: cdr
+        offered_qos_profiles: |-
+          - history: 1
+            depth: 1
+            reliability: 1
+            durability: 1
+            deadline:
+              sec: 9223372036
+              nsec: 854775807
+            lifespan:
+              sec: 9223372036
+              nsec: 854775807
+            liveliness: 1
+            liveliness_lease_duration:
+              sec: 9223372036
+              nsec: 854775807
+            avoid_ros_namespace_conventions: false
+      message_count: 50
+  compression_format: ""
+  compression_mode: ""
+  relative_file_paths:
+    - rewriter_b_0.mcap
+  files:
+    - path: rewriter_b_0.mcap
+      starting_time:
+        nanoseconds_since_epoch: 0
+      duration:
+        nanoseconds: 222000000
+      message_count: 75
+  custom_data: ~

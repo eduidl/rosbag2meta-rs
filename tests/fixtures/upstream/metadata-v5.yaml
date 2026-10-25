@@ -1,0 +1,80 @@
+# Source: https://github.com/ros2/rosbag2/blob/910c07f37e483e16f94e593e0a1609919f718286/rosbag2_py/test/resources/sqlite3/convert_a/metadata.yaml
+# License: Apache-2.0 (see LICENSE)
+# Formatting: legacy QoS strings use block scalars; parsed values are unchanged.
+rosbag2_bagfile_information:
+  version: 5
+  storage_identifier: sqlite3
+  duration:
+    nanoseconds: 100000000
+  starting_time:
+    nanoseconds_since_epoch: 0
+  message_count: 150
+  topics_with_message_count:
+    - topic_metadata:
+        name: a_empty
+        type: test_msgs/msg/Empty
+        serialization_format: cdr
+        offered_qos_profiles: |-
+          - history: 1
+            depth: 1
+            reliability: 1
+            durability: 1
+            deadline:
+              sec: 9223372036
+              nsec: 854775807
+            lifespan:
+              sec: 9223372036
+              nsec: 854775807
+            liveliness: 1
+            liveliness_lease_duration:
+              sec: 9223372036
+              nsec: 854775807
+            avoid_ros_namespace_conventions: false
+          - history: 1
+            depth: 2
+            reliability: 2
+            durability: 1
+            deadline:
+              sec: 9223372036
+              nsec: 854775807
+            lifespan:
+              sec: 9223372036
+              nsec: 854775807
+            liveliness: 1
+            liveliness_lease_duration:
+              sec: 9223372036
+              nsec: 854775807
+            avoid_ros_namespace_conventions: false
+      message_count: 100
+    - topic_metadata:
+        name: b_basictypes
+        type: test_msgs/msg/BasicTypes
+        serialization_format: cdr
+        offered_qos_profiles: |-
+          - history: 1
+            depth: 1
+            reliability: 1
+            durability: 1
+            deadline:
+              sec: 9223372036
+              nsec: 854775807
+            lifespan:
+              sec: 9223372036
+              nsec: 854775807
+            liveliness: 1
+            liveliness_lease_duration:
+              sec: 9223372036
+              nsec: 854775807
+            avoid_ros_namespace_conventions: false
+      message_count: 50
+  compression_format: ""
+  compression_mode: ""
+  relative_file_paths:
+    - rewriter_a_0.db3
+  files:
+    - path: rewriter_a_0.db3
+      starting_time:
+        nanoseconds_since_epoch: 0
+      duration:
+        nanoseconds: 100000000
+      message_count: 150

@@ -1,0 +1,25 @@
+# Source: https://github.com/ros2/rosbag2/blob/e02bc77a3d95e2248adb4de4f676c135d102a312/rosbag2_tests/resources/cdr_test/metadata.yaml
+# License: Apache-2.0 (see LICENSE)
+rosbag2_bagfile_information:
+  version: 3
+  storage_identifier: sqlite3
+  relative_file_paths:
+    - cdr_test.db3
+  duration:
+    nanoseconds: 155979811
+  starting_time:
+    nanoseconds_since_epoch: 1537282604241440135
+  message_count: 7
+  topics_with_message_count:
+    - topic_metadata:
+        name: /test_topic
+        type: test_msgs/BasicTypes
+        serialization_format: cdr
+      message_count: 3
+    - topic_metadata:
+        name: /array_topic
+        type: test_msgs/Arrays
+        serialization_format: cdr
+      message_count: 4
+  compression_format: ""
+  compression_mode: ""
