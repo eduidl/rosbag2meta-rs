@@ -350,3 +350,32 @@ fn resolves_file_paths_using_each_versions_base_directory() {
         );
     }
 }
+
+#[test]
+fn resolves_paths_from_current_and_parent_directories() {
+    use std::path::PathBuf;
+    for version in 1..=9 {
+        let metadata = from_str(&metadata_yaml(version)).unwrap();
+        for (directory, old_path, new_path) in [
+            (".", "./../recording/recording_0.db3", "./recording_0.db3"),
+            ("./", "./../recording/recording_0.db3", "./recording_0.db3"),
+            (
+                "..",
+                "../../recording/recording_0.db3",
+                "../recording_0.db3",
+            ),
+            (
+                "recording/..",
+                "recording/../../recording/recording_0.db3",
+                "recording/../recording_0.db3",
+            ),
+            ("", "../recording/recording_0.db3", "recording_0.db3"),
+        ] {
+            assert_eq!(
+                metadata.resolved_file_paths(directory),
+                [PathBuf::from(if version < 4 { old_path } else { new_path })],
+                "v{version}, directory {directory:?}"
+            );
+        }
+    }
+}

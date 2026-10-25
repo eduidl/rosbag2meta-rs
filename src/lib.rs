@@ -62,9 +62,16 @@ impl BagMetadata {
     pub fn resolved_file_paths(&self, bag_directory: impl AsRef<Path>) -> Vec<PathBuf> {
         let bag_directory = bag_directory.as_ref();
         let base = if self.version < 4 {
-            bag_directory.parent().unwrap_or(bag_directory)
+            match bag_directory.file_name() {
+                Some(_) => bag_directory
+                    .parent()
+                    .unwrap_or(bag_directory)
+                    .to_path_buf(),
+                // parent() removes a component; "." and ".." require traversal instead.
+                None => bag_directory.join(".."),
+            }
         } else {
-            bag_directory
+            bag_directory.to_path_buf()
         };
         self.relative_file_paths
             .iter()
@@ -157,29 +164,25 @@ pub struct StartingTime {
     pub nanoseconds_since_epoch: i64,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TopicInformation {
     pub topic_metadata: TopicMetadata,
     pub message_count: u64,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TopicMetadata {
     pub name: String,
-    #[serde(rename = "type")]
     pub topic_type: String,
     pub serialization_format: String,
     /// Required from version 4; None before then. Original representation retained.
-    #[serde(default)]
     pub offered_qos_profiles: Option<OfferedQosProfiles>,
     /// Added in version 7.
-    #[serde(default)]
     pub type_description_hash: String,
 }
 
 /// QoS was a YAML-encoded string before version 9 and a sequence thereafter.
-#[derive(Debug, Clone, PartialEq, Deserialize)]
-#[serde(untagged)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum OfferedQosProfiles {
     Legacy(String),
     Profiles(Vec<BTreeMap<String, Value>>),
